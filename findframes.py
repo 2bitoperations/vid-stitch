@@ -3,6 +3,7 @@ import logging
 import sys
 import cv2
 import numpy
+import lxml
 
 rootLogger = logging.getLogger()
 rootLogger.setLevel(logging.DEBUG)
@@ -18,6 +19,7 @@ logging.debug(sys.argv)
 files = sys.argv[1:]
 
 hists = dict()
+frame_times = dict()
 
 for current_file in files:
     file_index = files.index(current_file)
@@ -32,13 +34,17 @@ for current_file in files:
     if not vid.isOpened():
         logging.error("couldn't open file")
 
+    frame_times[file_index] = dict()
     hists[file_index] = dict()
     total_frame_count = vid.get(cv2.cv.CV_CAP_PROP_FRAME_COUNT)
 
     ret, frame = vid.read()
     while ret:
-        cur_frame_idx = vid.get(cv2.cv.CV_CAP_PROP_POS_FRAMES)
-        logging.debug("current frame %s of %s" % (cur_frame_idx, total_frame_count))
+        cur_frame_idx = int(vid.get(cv2.cv.CV_CAP_PROP_POS_FRAMES))
+        cur_frame_pos_msec = long(vid.get(cv2.cv.CV_CAP_PROP_POS_MSEC))
+        frame_height = int(vid.get(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT))
+        frame_width = int(vid.get(cv2.cv.CV_CAP_PROP_FRAME_WIDTH))
+        logging.debug("current frame %s of %s, %sx%s" % (cur_frame_idx, total_frame_count, frame_width, frame_height))
 
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         gray = numpy.float32(gray)
@@ -47,6 +53,7 @@ for current_file in files:
                             mask=None,
                             histSize=[256],
                             ranges=[0, 256])
+        frame_times[file_index][cur_frame_idx] = cur_frame_pos_msec
         hists[file_index][cur_frame_idx] = hist
 
         #logging.debug(dst)
@@ -80,6 +87,6 @@ for current_file in files:
 
         #logging.debug(correlations)
         best_match = max(correlations, key=correlations.get)
-        logging.debug("best match %s=%s" % (best_match,correlations[best_match]))
+        logging.debug("best match %s=%s" % (best_match, correlations[best_match]))
     else:
         logging.debug("prev idx %s first file, not calculating hists" % previous_index)
