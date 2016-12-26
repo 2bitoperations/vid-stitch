@@ -11,6 +11,13 @@ class SingleVideo:
         self.filename = filename
         self.end_msec = end_msec
 
+    def __str__(self):
+        return "%s %sx%s, start %s end %s" % (self.filename,
+                                              self.frame_width,
+                                              self.frame_height,
+                                              self.start_msec,
+                                              self.end_msec)
+
 
 class FcpEvent:
     def __init__(self):
@@ -56,7 +63,7 @@ class FcpEvent:
             clip_ref = "clip%s" % i
             format_ref = formats_by_height[video.frame_height]
             duration_secs = (video.end_msec - video.start_msec) / 1000
-            duration_secs_formatted = "%fs" % (duration_secs)
+            duration_secs_formatted = "%fs" % duration_secs
             start_secs_formatted = "%fs" % (video.start_msec / 1000)
             asset = etree.Element("asset",
                                   id=asset_ref,
