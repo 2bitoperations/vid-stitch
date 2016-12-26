@@ -53,7 +53,7 @@ class FcpEvent:
                                  format=format_name_1080p_30,
                                  renderColorSpace="Rec. 709",
                                  tcStart="0s",
-                                 tcFormat="NDF"
+                                 tcFormat="DF"
                                  )
         spine = etree.Element("spine")
 
@@ -97,7 +97,7 @@ class FcpEvent:
                                                  duration=duration_secs_formatted,
                                                  ref=asset_ref,
                                                  audioRole="dialogue",
-                                                 tcFormat="NDF")
+                                                 tcFormat="DF")
 
             spine.append(asset_clip_for_spine)
 

@@ -3,23 +3,30 @@ import sys
 
 import cv2
 import numpy
+from datetime import datetime
 
 from FcpEvent import FcpEvent, SingleVideo
 
+program_start_time = datetime.now()
+COLOR = "color"
+GREY = "grey"
+channels = GREY
 
 def compute_correlations(prev_file_hists, current_file_hists, frame_idx_from_previous):
     correlations = dict()
     for frame_index_current_file, hist in current_file_hists.iteritems():
-        similarity = 0
         try:
-
-            similarity = cv2.compareHist(method=cv2.cv.CV_COMP_CORREL,
-                                         H1=hist,
-                                         H2=prev_file_hists[frame_idx_from_previous])
-            frame_key = frame_index_current_file
-            correlations[frame_key] = similarity
-            if similarity > 0.98:
-                logging.debug("%s=%s" % (frame_key, similarity))
+            similarity = 0
+            if channels == COLOR:
+                for channel in range(0, 3):
+                    similarity += cv2.compareHist(method=cv2.cv.CV_COMP_CORREL,
+                                                  H1=hist[channel],
+                                                  H2=prev_file_hists[frame_idx_from_previous][channel])
+            else:
+                similarity += cv2.compareHist(method=cv2.cv.CV_COMP_CORREL,
+                                              H1=hist[0],
+                                              H2=prev_file_hists[frame_idx_from_previous][0])
+            correlations[frame_index_current_file] = similarity
         except Exception as ex:
             logging.error(ex)
 
@@ -54,7 +61,7 @@ for file_index, current_file in enumerate(files):
     else:
         previous_index = None
 
-    logging.debug("processing %s, idx %s prev %s" % (current_file, file_index, previous_index))
+    logging.debug("processing %s, idx %s prev %s, %s total" % (current_file, file_index, previous_index, len(files)))
     vid = cv2.VideoCapture(current_file)
 
     if not vid.isOpened():
@@ -68,22 +75,34 @@ for file_index, current_file in enumerate(files):
     frame_heights[file_index] = int(vid.get(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT))
     frame_widths[file_index] = int(vid.get(cv2.cv.CV_CAP_PROP_FRAME_WIDTH))
     if ret:
-        logging.debug("processing %s frames, %sx%s" % (total_frame_count, frame_widths[file_index], frame_heights[file_index]))
+        logging.debug("processing %s frames, %sx%s"
+                      % (total_frame_count, frame_widths[file_index], frame_heights[file_index]))
     while ret:
         cur_frame_idx = int(vid.get(cv2.cv.CV_CAP_PROP_POS_FRAMES))
         cur_frame_pos_msec = long(vid.get(cv2.cv.CV_CAP_PROP_POS_MSEC))
 
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        gray = numpy.float32(gray)
-        hist = cv2.calcHist(images=[gray],
-                            channels=[0],
-                            mask=None,
-                            histSize=[256],
-                            ranges=[0, 256])
         frame_times[file_index][cur_frame_idx] = cur_frame_pos_msec
-        hists[file_index][cur_frame_idx] = hist
-
-        # logging.debug(dst)
+        if channels == COLOR:
+            frame32 = numpy.float32(frame)
+            hists[file_index][cur_frame_idx] = [None, None, None]
+            for channel in range(0, 3):
+                hist = cv2.calcHist(images=[frame32],
+                                    channels=[channel],
+                                    mask=None,
+                                    histSize=[256],
+                                    ranges=[0, 256])
+                hists[file_index][cur_frame_idx][channel] = hist
+        else:
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            gray = numpy.float32(gray)
+            hist = cv2.calcHist(images=[gray],
+                                channels=[0],
+                                mask=None,
+                                histSize=[256],
+                                ranges=[0, 256])
+            frame_times[file_index][cur_frame_idx] = cur_frame_pos_msec
+            hists[file_index][cur_frame_idx] = [None]
+            hists[file_index][cur_frame_idx][0] = hist
 
         ret, frame = vid.read()
 
@@ -94,7 +113,7 @@ for file_index, current_file in enumerate(files):
         current_frame_count = len(current_file_hists)
         prev_frame_count = len(prev_file_hists)
 
-        logging.debug("%s features current file %s prev file" % (current_frame_count, prev_frame_count))
+        logging.debug("%s frames current file %s frames prev file" % (current_frame_count, prev_frame_count))
 
         max_frame_id_in_previous = max(frame_times[previous_index], key=frame_times[previous_index].get)
         max_frame_id = max(frame_times[file_index], key=frame_times[file_index].get)
@@ -119,7 +138,7 @@ for file_index, current_file in enumerate(files):
                 best_match = current_best_match
                 best_match_score = correlations[current_best_match]
                 best_previous_frame_idx = frame_idx_from_previous
-                if best_match_score > .999999:
+                if best_match_score > 2.999999:
                     found_good_match = True
                     break
 
@@ -131,7 +150,7 @@ for file_index, current_file in enumerate(files):
                    best_previous_frame_idx,
                    best_match,
                    best_match_score)
-                )
+            )
             end_frames[previous_index] = best_previous_frame_idx
             start_frames[file_index] = best_match
             end_frames[file_index] = max_frame_id
@@ -143,7 +162,7 @@ for file_index, current_file in enumerate(files):
                    best_previous_frame_idx,
                    best_match,
                    best_match_score)
-                )
+            )
             end_frames[previous_index] = max_frame_id_in_previous
             start_frames[file_index] = 1
             end_frames[file_index] = max_frame_id
@@ -166,5 +185,6 @@ for file_index, current_file in enumerate(files):
     logging.debug(fcp_video)
     event.append_video(fcp_video)
 
-with open('/tmp/findframes.fcpxml', 'w') as f:
+formatted_time = program_start_time.strftime("%Y-%m-%d--%H-%M-%S")
+with open("/tmp/findframes-%s.fcpxml" % formatted_time, 'w') as f:
     f.write(event.to_xml())
