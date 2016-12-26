@@ -10,7 +10,12 @@ from FcpEvent import FcpEvent, SingleVideo
 program_start_time = datetime.now()
 COLOR = "color"
 GREY = "grey"
+# i've tried with both color and grey, and at least in my test video set, it made zero difference to match points
 channels = GREY
+
+SOLID_MATCH = 2.99999
+if channels == GREY:
+    SOLID_MATCH = .99999
 
 def compute_correlations(prev_file_hists, current_file_hists, frame_idx_from_previous):
     correlations = dict()
@@ -138,7 +143,7 @@ for file_index, current_file in enumerate(files):
                 best_match = current_best_match
                 best_match_score = correlations[current_best_match]
                 best_previous_frame_idx = frame_idx_from_previous
-                if best_match_score > 2.999999:
+                if best_match_score > SOLID_MATCH:
                     found_good_match = True
                     break
 
