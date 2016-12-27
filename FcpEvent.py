@@ -62,14 +62,15 @@ class FcpEvent:
             asset_ref = "asset%s" % i
             clip_ref = "clip%s" % i
             format_ref = formats_by_height[video.frame_height]
-            duration_secs = (video.end_msec - video.start_msec) / 1000
+            video_end_formatted = "%fs" % (video.end_msec / 1000.0)
+            duration_secs = (video.end_msec - video.start_msec) / 1000.0
             duration_secs_formatted = "%fs" % duration_secs
-            start_secs_formatted = "%fs" % (video.start_msec / 1000)
+            start_secs_formatted = "%fs" % (video.start_msec / 1000.0)
             asset = etree.Element("asset",
                                   id=asset_ref,
                                   src="file://%s" % urllib.quote(video.filename),
-                                  start=start_secs_formatted,
-                                  duration=duration_secs_formatted,
+                                  start="0s",
+                                  duration=video_end_formatted,
                                   hasVideo="1",
                                   hasAudio="1",
                                   format=format_ref,
@@ -84,7 +85,7 @@ class FcpEvent:
                                        ref=asset_ref,
                                        format=format_ref,
                                        start="0s",
-                                       duration=duration_secs_formatted,
+                                       duration=video_end_formatted,
                                        audioRole="dialogue"
                                        )
 

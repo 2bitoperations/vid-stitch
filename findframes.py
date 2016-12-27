@@ -158,7 +158,7 @@ for file_index, current_file in enumerate(files):
             )
             end_frames[previous_index] = best_previous_frame_idx
             start_frames[file_index] = best_match
-            end_frames[file_index] = max_frame_id
+            end_frames[file_index] = max_frame_id - 1
         else:
             logging.warn(
                 "didn't find great match between %s and %s - best was between frame %s and %s with correlation %s"
@@ -182,9 +182,11 @@ for file_index, current_file in enumerate(files):
 for file_index, current_file in enumerate(files):
     start_frame = start_frames[file_index]
     end_frame = end_frames[file_index]
+    start_time = (1 / 30.0) * 1000.0 * (start_frame - 1)
+    end_time = (1 / 30.0) * 1000.0 * (end_frame - 1)
     fcp_video = SingleVideo(filename=current_file,
-                            start_msec=frame_times[file_index][start_frame] - frame_times[file_index][1],
-                            end_msec=frame_times[file_index][end_frame] - frame_times[file_index][1],
+                            start_msec=start_time,
+                            end_msec=end_time,
                             frame_width=frame_widths[file_index],
                             frame_height=frame_heights[file_index])
     logging.debug(fcp_video)
